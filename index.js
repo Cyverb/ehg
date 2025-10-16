@@ -7,6 +7,7 @@ const DISCORD_TOKEN = process.env.TOKEN;
 const CHANNEL_ID = process.env.CHANNEL_ID;
 const SPREADSHEET_ID = process.env.SHEET_ID;
 const PORT = process.env.PORT || 3000;
+const WARRANT_ROLE_ID = process.env.WARRANT_ROLE_ID || '1253735270914719787';
 
 // Debug environment variables (remove after confirming)
 console.log('DISCORD_TOKEN:', DISCORD_TOKEN ? 'Loaded' : 'Missing');
@@ -24,6 +25,65 @@ const auth = new google.auth.GoogleAuth({
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 const sheets = google.sheets({ version: 'v4', auth });
+
+// Simple command handler: !warrant
+client.on('messageCreate', async (message) => {
+  if (message.author.bot) return;
+
+  const prefix = process.env.PREFIX || '!';
+  if (!message.content.startsWith(prefix)) return;
+
+  const withoutPrefix = message.content.slice(prefix.length).trim();
+  const [rawCommand, ...rest] = withoutPrefix.split(' ');
+  const command = rawCommand.toLowerCase();
+
+  if (command !== 'warrant') return;
+
+  console.log('[warrant] command detected from', message.author.tag, 'in', message.guild?.name || 'DM');
+
+  const parts = rest.join(' ').split('|').map(s => s.trim()).filter(Boolean);
+  // Expected:
+  // !warrant @RoleToNotify | @Subject or Name | Summary/Reason | Threat Level | Threat bullets (semicolon-separated) | Actions (semicolon-separated)
+  if (parts.length < 2) {
+    await message.reply('Usage: !warrant @RoleToNotify (or - for default) | @Subject or Name | Summary/Reason | Threat Level | threat1; threat2; threat3 | action1; action2; action3');
+    return;
+  }
+
+  const defaultRoleMention = `<@&${WARRANT_ROLE_ID}>`;
+  const roleMention = parts[0] && parts[0] !== '-' ? parts[0] : defaultRoleMention;
+  const subject = parts[1] || 'Unknown Subject';
+  const summaryReason = parts[2] || 'Subject is to be arrested on-sight if criteria are met.';
+  const threatLevel = parts[3] || 'Level I – Civil disruption, protests, or interference';
+  const threatBullets = (parts[4] || 'Subject attempted to bribe EHG Command; Subject is a threat to EHG integrity').split(';').map(s => s.trim()).filter(Boolean);
+  const actionBullets = (parts[5] || 'Detainment of individual; Interrogation conducted by HARBINGER; Termination is approved if individual causes a scene.').split(';').map(s => s.trim()).filter(Boolean);
+
+  const threatList = threatBullets.map(b => `- ${b}`).join('\n');
+  const actionList = actionBullets.map(b => `- ${b}`).join('\n');
+
+  const noticeLines = [
+    `${roleMention}`,
+    '',
+    '**NOTICE – Active Warrant**',
+    '',
+    `All personnel are to keep an eye out for, or on, ${subject}. ${summaryReason} Personnel are advised to approach with caution. Once the arrest is completed, an incident report should be filled out with a summary of what happened during the arrest of this individual.`,
+    '',
+    `**Threat Level** – ${threatLevel}`,
+    '',
+    '**Indicators / Justification**',
+    threatList,
+    '',
+    '**Actions Requested**',
+    actionList
+  ];
+
+  const content = noticeLines.join('\n');
+  try {
+    await message.channel.send({ content });
+  } catch (err) {
+    console.error('[warrant] failed to send message:', err);
+    await message.reply('I could not send the warrant notice here. Check my permissions to send messages in this channel.');
+  }
+});
 
 client.on('messageCreate', async (message) => {
   if (message.channel.id !== CHANNEL_ID) return;
