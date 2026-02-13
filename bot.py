@@ -5,6 +5,7 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 import google.generativeai as genai
+from aiohttp import web
 
 
 load_dotenv()
@@ -63,7 +64,7 @@ async def ellie_command(ctx: commands.Context, *, message: str):
     """Chat with Ellie via text."""
     await ctx.send("Thinking...")
     reply_text = await ellie_reply_to_text(message)
-    await ctx.send(f"Ellie: {reply_text}")
+    await ctx.send(f"{reply_text}")
 
 
 @bot.event
@@ -86,5 +87,28 @@ async def on_message(message: discord.Message):
 
 
 if __name__ == "__main__":
-    bot.run(DISCORD_TOKEN)
+    async def handle_health(request: web.Request) -> web.Response:
+        return web.Response(text="ok")
+
+
+    async def main():
+        # Start Discord bot
+        asyncio.create_task(bot.start(DISCORD_TOKEN))
+
+        # Start tiny web server for Render/UptimeRobot
+        app = web.Application()
+        app.router.add_get("/health", handle_health)
+
+        port = int(os.getenv("PORT", "10000"))
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "0.0.0.0", port)
+        await site.start()
+
+        # Keep running forever
+        while True:
+            await asyncio.sleep(3600)
+
+
+    asyncio.run(main())
 
