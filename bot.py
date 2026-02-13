@@ -35,16 +35,18 @@ SYSTEM_PROMPT = (
 
 
 async def ellie_reply_to_text(text: str) -> str:
-    """Use Gemini to generate Ellie's reply text."""
+    """Use Gemini to generate Ellie's reply text, with basic error handling."""
 
     def _generate() -> str:
-        response = gemini_model.generate_content(
-            [
-                SYSTEM_PROMPT,
-                text,
-            ]
-        )
-        return (response.text or "").strip()
+        try:
+            response = gemini_model.generate_content(
+                f"{SYSTEM_PROMPT}\n\nUser: {text}\nEllie:"
+            )
+            return (getattr(response, "text", "") or "").strip()
+        except Exception as e:
+            # Log to console on the host so you can see what went wrong.
+            print("Gemini error:", repr(e))
+            return "I ran into an error talking to my brain."
 
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, _generate)
