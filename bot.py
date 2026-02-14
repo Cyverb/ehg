@@ -83,12 +83,12 @@ async def ellie_reply_to_text(text: str, context: str | None = None) -> str:
         )
         output_text = getattr(response, "output_text", "")
         if not output_text:
-            return "I ran into an error generating a response."
+            return "I ran into an error generating a response. TEXT OUTPUT"
         return output_text.strip()
 
     except Exception as e:
         print(f"Groq error: {type(e).__name__}: {e}")
-        return "I ran into an error generating a response."
+        return "I ran into an error generating a response. GROQ"
 
 # Bot Events
 @bot.event
