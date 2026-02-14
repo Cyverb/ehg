@@ -44,20 +44,21 @@ async def ellie_reply_to_text(text: str) -> str:
 
     def _generate() -> str:
         try:
-            # Generate response with Gemini (system instruction is already set in model)
             response = gemini_model.generate_content(text)
-            
-            # Extract text from response
-            if hasattr(response, 'text') and response.text:
-                return response.text.strip()
-            elif hasattr(response, 'candidates') and response.candidates:
-                return response.candidates[0].content.parts[0].text.strip()
-            else:
+            # Blocked or no text
+            if not response.candidates:
+                fb = getattr(response, "prompt_feedback", None)
+                if fb and getattr(fb, "block_reason", None):
+                    return "My brain got a block on that—try rephrasing?"
                 return "I couldn't generate a response."
+            parts = response.candidates[0].content.parts
+            if not parts:
+                return "I couldn't generate a response."
+            return (parts[0].text or "").strip() or "I couldn't generate a response."
         except Exception as e:
-            # Log to console on the host so you can see what went wrong.
-            print(f"Gemini error: {type(e).__name__}: {str(e)}")
-            return f"I ran into an error: {str(e)[:100]}"
+            err_msg = f"{type(e).__name__}: {str(e)}"
+            print(f"Gemini error: {err_msg}")
+            return f"I ran into an error: {err_msg[:180]}"
 
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, _generate)
