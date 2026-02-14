@@ -42,41 +42,34 @@ SYSTEM_PROMPT = (
 )
 
 # FULL LORE CONTEXT
-LORE_CONTEXT =( """
-Elite Honor Guards serve UGF United Global Federation.
+LORE_CONTEXT = (
+    "Elite Honor Guards serve UGF United Global Federation.\n\n"
+    "The Elite Honor Guard, nicknamed The Federal Crowns, are the towering ceremonial and protective force of the United Federation’s highest officials. "
+    "They represent absolute loyalty and power, standing at an average height of 8 feet, with the tallest reaching up to 9'4. "
+    "Each guard is augmented with cybernetics and exo-frame modifications that enhance strength, agility, and reflexes. "
+    "Neural interfaces sync with advanced mono-goggles equipped with ballistic trackers, linked to co-pilot AIs for near-perfect precision in combat. "
+    "Higher-ranking guards and those assigned critical protection receive additional augmentations such as reinforced skeletal structures and advanced neuro-circuitry. "
+    "These elite warriors command fear and respect, serving as both protectors and symbols of the Federation’s supremacy.\n\n"
+    "Guard Queens are spouses of High Command members, trained and augmented similarly to the Federal Crowns. "
+    "They serve in both ceremonial and defensive capacities, acting as high-profile protectors of the Federation leadership and ensuring the stability of elite operations.\n\n"
+    "Calamity Parawatch – Global Paramilitary Force (Proto-UGF). "
+    "Founded in the early 1960s as an independent paramilitary organization, Calamity emerged as a response to the growing gang crises and the red scare that plagued urban centers worldwide. "
+    "Unlike traditional law enforcement, they operated outside government jurisdiction, answering only to their own chain of command. "
+    "By the late 1970s and into the 1980s, they had evolved into a powerful force, rivaling even military-backed law enforcement agencies. "
+    "They used intelligence groups, private security contractors, and rival gangs to dismantle criminal empires. Their methods were morally gray, but effective.\n\n"
+    "PROJECT CALAMITY – OVERVIEW. "
+    "Status: Decommissioned. "
+    "Successor Entity: Calamity Paramilitary Organization → Democratic Federal Party (1999). "
+    "Founder: Calamity Korvelle (b. 1959 – d. 1985). "
+    "Origin Country: United States.\n\n"
+    "The United Federation High Command, aka Federal Champions, has 26 members: 13 active, 13 interim. "
+    "Active members oversee critical branches and long-term operations. Interim members step in if needed. "
+    "Together they ensure continuity, preparedness, and protection of the Federation’s interests.\n\n"
+    "The United Federation War Rockers boost soldier morale via music. "
+    "They wield electric guitars, play live or pre-recorded tracks, inspire aggression, unity, and patriotism. "
+    "They also produce Federation anthems and war songs to reinforce morale and undermine anti-federal forces."
+)
 
-The Elite Honor Guard, nicknamed "The Federal Crowns," are the towering ceremonial and protective force of the United Federation’s highest officials. 
-They represent absolute loyalty and power, standing at an average height of 8 feet, with the tallest reaching up to 9'4". 
-Each guard is augmented with cybernetics and exo-frame modifications that enhance strength, agility, and reflexes. 
-Neural interfaces sync with advanced mono-goggles equipped with ballistic trackers, linked to co-pilot AIs for near-perfect precision in combat. 
-Higher-ranking guards and those assigned critical protection receive additional augmentations such as reinforced skeletal structures and advanced neuro-circuitry. 
-These elite warriors command fear and respect, serving as both protectors and symbols of the Federation’s supremacy.
-
-Guard Queens are spouses of High Command members, trained and augmented similarly to the Federal Crowns. 
-They serve in both ceremonial and defensive capacities, acting as high-profile protectors of the Federation leadership and ensuring the stability of elite operations.
-
-Calamity Parawatch – Global Paramilitary Force (Proto-UGF)
-Founded in the early 1960s as an independent paramilitary organization, Calamity emerged as a response to the growing gang crises and the red scare that plagued urban centers worldwide. Unlike traditional law enforcement, they operated outside government jurisdiction, answering only to their own chain of command.
-
-By the late 1970s and into the 1980s, they had evolved into a powerful force, rivaling even military-backed law enforcement agencies. They used intelligence groups, private security contractors, and rival gangs to dismantle criminal empires. Their methods were morally gray, but effective.
-
-PROJECT CALAMITY – OVERVIEW
-Status: Decommissioned
-Successor Entity: Calamity Paramilitary Organization → Democratic Federal Party (1999)
-Founder: Calamity Korvelle (b. 1959 – d. 1985)
-Origin Country: United States
-
-The United Federation High Command, aka Federal Champions, has 26 members: 13 active, 13 interim. 
-Active members oversee critical branches and long-term operations. Interim members step in if needed. 
-Together they ensure continuity, preparedness, and protection of the Federation’s interests.
-
-The United Federation War Rockers boost soldier morale via music. 
-They wield electric guitars, play live or pre-recorded tracks, inspire aggression, unity, and patriotism. 
-They also produce Federation anthems and war songs to reinforce morale and undermine anti-federal forces.
-
-Ellie should reference this lore intelligently, concisely, and only when relevant.
-"""
-              )
 
 # Version-safe Ellie reply function
 async def ellie_reply_to_text(text: str, context: str | None = None) -> str:
