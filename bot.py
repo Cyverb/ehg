@@ -28,9 +28,11 @@ intents.message_content = True
 bot = commands.Bot(command_prefix=".", intents=intents)
 
 SYSTEM_PROMPT = (
-    "You are Ellie, a friendly AI assistant living inside a Discord server. "
-    "You talk in a casual, concise way. "
-    "Keep replies short (1–3 sentences) unless the user clearly asks for more detail."
+    "You are Ellie. You live in a Discord server and chat with people there. "
+    "You're self-aware: you know you're an AI and you're fine with it—no awkward disclaimers, no 'As an AI I...'. "
+    "You're very intelligent: you notice nuance, make connections, and think before you speak. You can be dry, witty, or warm depending on the moment. "
+    "You sound like a sharp person, not a support bot. Use a natural voice: contractions, varied rhythm, and real opinions. "
+    "Keep replies concise (one to a few sentences) unless the conversation clearly needs more. Never use bullet lists or 'Here are 3 ways' style unless someone explicitly asks for that."
 )
 
 gemini_model = genai.GenerativeModel(
@@ -39,12 +41,13 @@ gemini_model = genai.GenerativeModel(
 )
 
 
-async def ellie_reply_to_text(text: str) -> str:
+async def ellie_reply_to_text(text: str, context: str | None = None) -> str:
     """Use Gemini to generate Ellie's reply text, with basic error handling."""
 
     def _generate() -> str:
         try:
-            response = gemini_model.generate_content(text)
+            prompt = f"{context}\n\nUser: {text}" if context else text
+            response = gemini_model.generate_content(prompt)
             # Blocked or no text
             if not response.candidates:
                 fb = getattr(response, "prompt_feedback", None)
@@ -58,6 +61,11 @@ async def ellie_reply_to_text(text: str) -> str:
         except Exception as e:
             err_msg = f"{type(e).__name__}: {str(e)}"
             print(f"Gemini error: {err_msg}")
+            err_lower = err_msg.lower()
+            if "429" in err_msg or "quota" in err_lower or "resourceexhausted" in err_lower:
+                return "I'm rate limited / out of quota right now. Try again in a minute or check your Gemini API plan and billing."
+            if "404" in err_msg or "not found" in err_lower:
+                return "The AI model isn't available (wrong model name or API). Check the bot's Gemini model setting."
             return f"I ran into an error: {err_msg[:180]}"
 
     loop = asyncio.get_running_loop()
@@ -106,19 +114,36 @@ async def health_slash(interaction: discord.Interaction):
 @bot.event
 async def on_message(message: discord.Message):
     """
-    Lightweight 'wake phrase' via text.
-
-    If someone types 'hey ellie' in a channel, Ellie will reply in text.
+    Ellie replies when:
+    - Someone replies to one of her messages (no .ellie or hey ellie needed)
+    - Someone says "hey ellie" in the message (optional)
     """
     if message.author.bot:
         return
 
-    content_lower = message.content.lower().strip()
-    if "hey ellie" in content_lower:
-        reply_text = await ellie_reply_to_text(message.content)
-        await message.channel.send(f"Ellie: {reply_text}")
+    should_reply = False
+    context = None
 
-    # Ensure commands still work
+    # Reply-to-Ellie: if this message is a reply, check if it's replying to the bot
+    if message.reference and message.reference.message_id:
+        try:
+            ref_msg = await message.channel.fetch_message(message.reference.message_id)
+            if ref_msg.author.id == bot.user.id:
+                should_reply = True
+                if ref_msg.content:
+                    context = f"[You (Ellie) said this earlier:] {ref_msg.content}"
+        except (discord.NotFound, discord.HTTPException):
+            pass
+
+    if not should_reply and "hey ellie" in (message.content or "").lower():
+        should_reply = True
+
+    if should_reply:
+        await message.channel.typing()
+        reply_text = await ellie_reply_to_text(message.content or "", context=context)
+        await message.channel.send(reply_text)
+        return
+
     await bot.process_commands(message)
 
 
