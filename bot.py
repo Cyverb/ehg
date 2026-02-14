@@ -77,24 +77,34 @@ They also produce Federation anthems and war songs to reinforce morale and under
 Ellie should reference this lore intelligently, concisely, and only when relevant.
 """
 
-# Function to generate Ellie replies
+# Version-safe Ellie reply function
 async def ellie_reply_to_text(text: str, context: str | None = None) -> str:
-    """Generate Ellie's reply using Groq with full lore context."""
+    """Generate Ellie's reply using Groq with full lore context, compatible with multiple SDK versions."""
     try:
         combined_context = f"{SYSTEM_PROMPT}\n\n{LORE_CONTEXT}"
         if context:
             combined_context += f"\n\n[Previous context:] {context}"
         prompt = f"{combined_context}\n\nUser: {text}"
 
-        response = groq_client.completions.create(
-            model="groq-1",
-            prompt=prompt,
-            max_output_tokens=300
-        )
+        try:
+            # Newer SDK (0.11+)
+            response = groq_client.completions.create(
+                model="groq-1",
+                prompt=prompt,
+                max_output_tokens=300
+            )
+            return getattr(response, "output_text", "").strip()
+        except AttributeError:
+            # Older SDK fallback
+            response = groq_client.generate_text(
+                prompt=prompt,
+                model="groq-1",
+                max_output_tokens=300
+            )
+            return getattr(response, "text", "").strip()
 
-        return getattr(response, "output_text", "").strip() or "I couldn't generate a response."
     except Exception as e:
-        print(f"Groq error: {e}")
+        print(f"Groq error: {type(e).__name__}: {e}")
         return "I ran into an error generating a response."
 
 # Bot Events
