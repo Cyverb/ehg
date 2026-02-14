@@ -42,7 +42,7 @@ SYSTEM_PROMPT = (
 )
 
 # FULL LORE CONTEXT
-LORE_CONTEXT = """
+LORE_CONTEXT =( """
 Elite Honor Guards serve UGF United Global Federation.
 
 The Elite Honor Guard, nicknamed "The Federal Crowns," are the towering ceremonial and protective force of the United Federation’s highest officials. 
@@ -76,6 +76,7 @@ They also produce Federation anthems and war songs to reinforce morale and under
 
 Ellie should reference this lore intelligently, concisely, and only when relevant.
 """
+              )
 
 # Version-safe Ellie reply function
 async def ellie_reply_to_text(text: str, context: str | None = None) -> str:
