@@ -26,18 +26,16 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix=".", intents=intents)
-# Initialize Gemini model with system instruction
-# Try gemini-1.5-flash (most common) or gemini-2.0-flash-exp if available
-gemini_model = genai.GenerativeModel(
-    "gemini-1.5-flash",
-    system_instruction=SYSTEM_PROMPT
-)
-
 
 SYSTEM_PROMPT = (
     "You are Ellie, a friendly AI assistant living inside a Discord server. "
     "You talk in a casual, concise way. "
     "Keep replies short (1–3 sentences) unless the user clearly asks for more detail."
+)
+
+gemini_model = genai.GenerativeModel(
+    "gemini-1.5-flash",
+    system_instruction=SYSTEM_PROMPT
 )
 
 
