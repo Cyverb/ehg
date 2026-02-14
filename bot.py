@@ -79,21 +79,23 @@ Ellie should reference this lore intelligently, concisely, and only when relevan
 
 # Function to generate Ellie replies
 async def ellie_reply_to_text(text: str, context: str | None = None) -> str:
-    """Generate Ellie's reply with full lore context."""
-    def _generate() -> str:
-        try:
-            combined_context = f"{SYSTEM_PROMPT}\n\n{LORE_CONTEXT}"
-            if context:
-                combined_context += f"\n\n[Previous context:] {context}"
-            prompt = f"{combined_context}\n\nUser: {text}"
-            response = groq_client.generate(prompt)
-            return response.text.strip() if hasattr(response, "text") else "I couldn't generate a response."
-        except Exception as e:
-            print(f"Groq error: {e}")
-            return "I ran into an error generating a response."
+    """Generate Ellie's reply using Groq with full lore context."""
+    try:
+        combined_context = f"{SYSTEM_PROMPT}\n\n{LORE_CONTEXT}"
+        if context:
+            combined_context += f"\n\n[Previous context:] {context}"
+        prompt = f"{combined_context}\n\nUser: {text}"
 
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, _generate)
+        response = groq_client.completions.create(
+            model="groq-1",
+            prompt=prompt,
+            max_output_tokens=300
+        )
+
+        return getattr(response, "output_text", "").strip() or "I couldn't generate a response."
+    except Exception as e:
+        print(f"Groq error: {e}")
+        return "I ran into an error generating a response."
 
 # Bot Events
 @bot.event
