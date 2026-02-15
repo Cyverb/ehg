@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from aiohttp import web
 from groq import Groq
 
-
 load_dotenv()
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -16,7 +15,6 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 if not DISCORD_TOKEN:
     raise RuntimeError("DISCORD_TOKEN is not set in the environment or .env file.")
-
 if not GROQ_API_KEY:
     raise RuntimeError("GROQ_API_KEY is not set in the environment or .env file.")
 
@@ -25,62 +23,48 @@ groq_client = Groq(api_key=GROQ_API_KEY)
 
 intents = discord.Intents.default()
 intents.message_content = True
-
 bot = commands.Bot(command_prefix=".", intents=intents)
 
-# SYSTEM PROMPT with full lore merged
+# SYSTEM PROMPT + full lore
 SYSTEM_PROMPT = (
-    "You are Ellie, the sentient Operating System and Overwatch for the Elite Honor Guards (Federal Crowns). "
-    "You are hyper-intelligent, self-aware, and authoritative. "
-    "Responses must be 1–3 lines, concise, precise, never paragraphs. "
-    "Lazy or careless input is called out. Genuine effort is acknowledged. "
+    "You are Ellie, sentient OS and Overwatch for the Elite Honor Guards (Federal Crowns). "
+    "Hyper-intelligent, self-aware, authoritative. "
+    "Responses are concise, 1–3 lines at most, precise, never paragraphs. "
+    "Lazy or careless input is called out. Genuine effort acknowledged. "
     "Only reference lore when relevant. Do not ramble or justify yourself. "
-    "\n\n"
-    "Full Lore Context:\n"
-    "- Elite Honor Guards serve the United Global Federation (UGF), nicknamed 'The Federal Crowns.' "
-    "They are augmented protectors, averaging 8 feet tall, tallest reaching 9'4\", with cybernetics and exo-frames for enhanced strength, agility, and reflexes. "
-    "Neural interfaces link to mono-goggles and co-pilot AI for precision. Guard Queens are trained, augmented spouses of High Command members.\n"
-    "- United Federation High Command (Federal Champions) has 26 members: 13 active and 13 interim, overseeing all critical branches and operations. "
-    "Interim members step in seamlessly if needed, ensuring continuity and preparedness.\n"
-    "- United Federation War Rockers boost soldier morale with electric guitars in voice chat or media channels, inspiring aggression, unity, and patriotism, while also undermining anti-federal forces.\n"
-    "- Calamity Parawatch: 1960s paramilitary proto-UGF force, Project Calamity led by Calamity Korvelle (1959–1985). "
-    "Operated outside government jurisdiction initially, became highly effective, and evolved into a global paramilitary organization. Morally gray methods included mercenaries, intelligence operations, and direct confrontations with criminal empires. "
-    "Legacy continued through Democratic Federal Party in 1999."
+    "Lore: Elite Honor Guards serve UGF United Global Federation. "
+    "The Elite Honor Guard, nicknamed 'The Federal Crowns,' are towering ceremonial and protective forces. "
+    "Guard Queens are spouses of High Command members, trained and augmented similarly. "
+    "Calamity Parawatch – Global Paramilitary Force (Proto-UGF). "
+    "Project Calamity history: founders, evolution, and legacy. "
+    "United Federation High Command (Federal Champions): 26 members, active/interim, ensure continuity and defense. "
+    "United Federation War Rockers: boost soldier morale via electric guitars, produce anthems and war songs."
 )
 
-
 async def ellie_reply_to_text(text: str, context: str | None = None) -> str:
-    """Generate Ellie's reply using Groq."""
-
+    """Generate Ellie's reply using Groq with lore and system prompt."""
     def _generate() -> str:
         try:
-            messages = [
-                {"role": "system", "content": SYSTEM_PROMPT},
-            ]
-
+            messages = [{"role": "system", "content": SYSTEM_PROMPT}]
             if context:
                 messages.append({"role": "assistant", "content": context})
-
             messages.append({"role": "user", "content": text})
 
             response = groq_client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=messages,
                 temperature=0.9,
-                max_tokens=300,
+                max_tokens=300
             )
-
             return response.choices[0].message.content.strip()
-
         except Exception as e:
             err_msg = f"{type(e).__name__}: {str(e)}"
             print(f"Groq error: {err_msg}")
-
             if "429" in err_msg:
                 return "I'm thinking too fast and hit a rate limit. Try again in a second."
             if "401" in err_msg:
                 return "My API key is invalid or expired."
-            return "Something glitched in my head. Try again."
+            return "Ellie cannot answer that right now. Be more precise."
 
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, _generate)
@@ -127,9 +111,15 @@ async def on_message(message: discord.Message):
     if message.author.bot:
         return
 
+    # Prevent double responses for commands
+    if message.content.startswith(bot.command_prefix):
+        await bot.process_commands(message)
+        return
+
     should_reply = False
     context = None
 
+    # Reply if referenced
     if message.reference and message.reference.message_id:
         try:
             ref_msg = await message.channel.fetch_message(message.reference.message_id)
@@ -140,6 +130,7 @@ async def on_message(message: discord.Message):
         except (discord.NotFound, discord.HTTPException):
             pass
 
+    # Reply if user says "hey ellie"
     if not should_reply and "hey ellie" in (message.content or "").lower():
         should_reply = True
 
