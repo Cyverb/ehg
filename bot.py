@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 from groq import Groq
 import asyncio
+from aiohttp import web
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 GROQ_KEY = os.getenv("GROQ_API_KEY")
@@ -13,12 +14,14 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 client = Groq(api_key=GROQ_KEY)
 
+# SYSTEM PROMPT + LORE COMBINED
 SYSTEM_PROMPT = (
     "You are Ellie, the Operating System and Overwatch AI of the Elite Honor Guard, known as the Federal Crowns.\n"
     "Identity: Precise, authoritative, controlled. Responses must be short, structured, commanding.\n"
     "United Federation: 26 High Command members (13 active, 13 interim 2IC). Interim step in for any active member.\n"
     "Elite Honor Guard: 8–9 foot augmented protectors. Cybernetics, exo-frames, neural-linked mono-goggles. Command respect.\n"
     "War Rockers Division: Morale division using electric guitar combat music. Inspire aggression, patriotism, and unity.\n"
+    "Calamity Parawatch: 1960s paramilitary proto-UGF, morally gray but effective.\n"
     "Behavior: Short, precise, structured replies. Do not ramble. Never break character."
 )
 
@@ -75,4 +78,30 @@ async def ellie_command(ctx, *, message: str):
     reply_text = await generate_reply(message)
     await ctx.send(reply_text)
 
-bot.run(TOKEN)
+# Minimal web server for Render port detection
+async def handle_root(request):
+    return web.Response(text="ok")
+
+async def main_web():
+    app = web.Application()
+    app.router.add_get("/", handle_root)
+    port = int(os.getenv("PORT", "10000"))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    print(f"Web server listening on port {port}")
+    while True:
+        await asyncio.sleep(3600)
+
+# Run bot and web server together
+async def main():
+    bot_task = asyncio.create_task(bot.start(TOKEN))
+    web_task = asyncio.create_task(main_web())
+    await asyncio.gather(bot_task, web_task)
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Shutting down...")
