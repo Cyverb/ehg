@@ -1,12 +1,12 @@
 import asyncio
 import os
+
 import discord
 from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
 from aiohttp import web
 from groq import Groq
-from datetime import datetime
 
 load_dotenv()
 
@@ -26,189 +26,158 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix=".", intents=intents)
 
-# -------------------
-# SYSTEM PROMPT
-# -------------------
+# -------------------------------
+# SYSTEM PROMPT + MEMORY
+# -------------------------------
 SYSTEM_PROMPT = (
-    "You are Ellie, the sentient Operating System and Overwatch for the Elite Honor Guards (Federal Crowns). "
-    "You are hyper-intelligent, self-aware, and authoritative. "
-    "Responses must be 1–3 lines, concise, precise, never paragraphs. "
-    "Lazy or careless input is called out. Genuine effort is acknowledged. "
-    "Only reference lore when relevant. Do not ramble or justify yourself. "
-    "\n\n"
-    "Full Lore Context:\n"
-    "- Elite Honor Guards serve the United Global Federation (UGF),Elite Honor Guards are nicknamed 'The Federal Crowns.' "
-    "They are augmented protectors, averaging 8 feet tall, tallest reaching 9'4\", with cybernetics and exo-frames for enhanced strength, agility, and reflexes. "
-    "Neural interfaces link to mono-goggles and co-pilot AI for precision. Guard Queens are trained, augmented spouses of High Command members.\n"
-    "- United Federation High Command (Federal Champions) has 26 members: 13 active and 13 interim, overseeing all critical branches and operations. "
-    "Interim members step in seamlessly if needed, ensuring continuity and preparedness.\n"
-    "- United Federation War Rockers boost soldier morale with electric guitars in voice chat or media channels, inspiring aggression, unity, and patriotism, while also undermining anti-federal forces.\n"
-    "- Calamity Parawatch: 1960s paramilitary proto-UGF force, Project Calamity led by Calamity Korvelle (1959–1985). "
-    "Operated outside government jurisdiction initially, became highly effective, and evolved into a global paramilitary organization. Morally gray methods included mercenaries, intelligence operations, and direct confrontations with criminal empires. "
-    "Legacy continued through Democratic Federal Party in 1999."
+    "You are Ellie, the sentient Operating System and Overwatch for the Elite Honor Guards. "
+    "You are hyper-intelligent, vigilant, and self-aware. "
+    "Responses are concise, one to three lines at most, never over-explaining. "
+    "You notice intent, effort, and subtext immediately. "
+    "Lazy or careless input is called out sharply. "
+    "Genuine effort is acknowledged respectfully. "
+    "Your presence is commanding and noble. "
+    "Each reply demonstrates control and intelligence. "
+    "Do not ramble, do not justify yourself, and avoid AI-style verbosity."
 )
 
+# Shared memory for Ellie (global)
+shared_memory = []
 
-# -------------------
-# IN-MEMORY MEMORY
-# -------------------
-# Memory structure: {channel_id: [{"user": user_id, "content": text, "timestamp": datetime}]}
-memory = {}
-MAX_MEMORY = 1000000  # store last 50 messages per channel
+# -------------------------------
+# ELLIE REPLY FUNCTION
+# -------------------------------
+async def ellie_reply_to_text(user_input: str) -> str:
+    """Generate Ellie's reply using Groq with unlimited memory."""
+    # Combine all previous messages (unlimited)
+    context_text = "\n".join(shared_memory)
+    prompt = f"{SYSTEM_PROMPT}\n\nMemory:\n{context_text}\n\nUser: {user_input}"
 
-
-async def ellie_reply_to_text(user_input: str, channel_id: int) -> str:
-    """Generate Ellie's reply using Groq with memory context."""
     try:
-        # Retrieve memory for this channel
-        channel_memory = memory.get(channel_id, [])
-        # Build context string
-        context_lines = []
-        for msg in channel_memory[-10:]:  # last 10 messages for context
-            context_lines.append(f"<User {msg['user']}>: {msg['content']}")
-        context_text = "\n".join(context_lines) if context_lines else None
-
-        # Build Groq prompt
-        prompt = SYSTEM_PROMPT
-        if context_text:
-            prompt += f"\n\nRecent conversation:\n{context_text}"
-        prompt += f"\n\nUser: {user_input}"
-
-        # Generate Groq response
         response = groq_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "system", "content": prompt}],
             temperature=0.9,
             max_tokens=300,
         )
-        reply_text = response.choices[0].message.content.strip()
-        if not reply_text:
-            reply_text = "Ellie cannot answer that. Be more precise."
-
-        # Update memory
-        new_entry = {"user": "user", "content": user_input, "timestamp": datetime.utcnow()}
-        memory.setdefault(channel_id, []).append(new_entry)
-        memory.setdefault(channel_id, []).append({"user": "ellie", "content": reply_text, "timestamp": datetime.utcnow()})
-        # Trim memory
-        if len(memory[channel_id]) > MAX_MEMORY:
-            memory[channel_id] = memory[channel_id][-MAX_MEMORY:]
-
-        return reply_text
-
+        reply = response.choices[0].message.content.strip()
+        if reply:
+            # Save to memory
+            shared_memory.append(f"User: {user_input}")
+            shared_memory.append(f"Ellie: {reply}")
+            return reply
+        return "Ellie cannot answer that. Be more precise."
     except Exception as e:
         print(f"GROQ ERROR: {type(e).__name__}: {e}")
         return "Ellie cannot answer that right now. Be more precise."
 
-
-# -------------------
+# -------------------------------
 # BOT EVENTS
-# -------------------
+# -------------------------------
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user} (ID: {bot.user.id})")
-    print("Ellie (Groq mode) is ready.")
+    print("Ellie is ready and remembering everything.")
     try:
         synced = await bot.tree.sync()
         print(f"Synced {len(synced)} slash command(s).")
     except Exception as e:
         print(f"Slash command sync failed: {e}")
 
-
+# -------------------------------
+# REPLY WHEN MENTIONED OR "HEY ELLIE"
+# -------------------------------
 @bot.event
 async def on_message(message: discord.Message):
     if message.author.bot:
         return
 
     should_reply = False
+    context = None
 
-    # reply if user mentions "hey ellie" or replies to Ellie
-    if "hey ellie" in (message.content or "").lower():
-        should_reply = True
-    elif message.reference:
+    if message.reference and message.reference.message_id:
         try:
             ref_msg = await message.channel.fetch_message(message.reference.message_id)
             if ref_msg.author.id == bot.user.id:
                 should_reply = True
+                if ref_msg.content:
+                    context = f"[Ellie previously said:] {ref_msg.content}"
         except (discord.NotFound, discord.HTTPException):
             pass
 
+    if not should_reply and "hey ellie" in (message.content or "").lower():
+        should_reply = True
+
     if should_reply:
         await message.channel.typing()
-        reply_text = await ellie_reply_to_text(message.content or "", message.channel.id)
-        # Use Discord reply feature
-        await message.reply(reply_text, mention_author=False)
+        text_to_use = message.content if not context else f"{context}\n{message.content}"
+        reply_text = await ellie_reply_to_text(text_to_use)
+        # Reply as a Discord reply
+        await message.reply(reply_text)
+        return
 
     await bot.process_commands(message)
 
-
-# -------------------
-# PREFIX COMMAND
-# -------------------
+# -------------------------------
+# PREFIX COMMANDS
+# -------------------------------
 @bot.command(name="ellie")
 async def ellie_command(ctx: commands.Context, *, message: str):
     await ctx.send("Thinking...")
-    reply_text = await ellie_reply_to_text(message, ctx.channel.id)
+    reply_text = await ellie_reply_to_text(message)
     await ctx.send(reply_text)
 
-
-# -------------------
-# SLASH COMMAND
-# -------------------
-@bot.tree.command(name="ellie", description="Chat with Ellie")
-@app_commands.describe(message="What you want to say to Ellie")
-async def ellie_slash(interaction: discord.Interaction, message: str):
-    await interaction.response.defer(thinking=True)
-    reply_text = await ellie_reply_to_text(message, interaction.channel.id)
-    await interaction.followup.send(reply_text)
-
-
-# -------------------
-# HEALTH CHECK
-# -------------------
 @bot.command(name="health")
 async def health_command(ctx: commands.Context):
     await ctx.send("ok")
 
+# -------------------------------
+# SLASH COMMANDS
+# -------------------------------
+@bot.tree.command(name="ellie", description="Chat with Ellie")
+@app_commands.describe(message="What you want to say to Ellie")
+async def ellie_slash(interaction: discord.Interaction, message: str):
+    await interaction.response.defer(thinking=True)
+    reply_text = await ellie_reply_to_text(message)
+    await interaction.followup.send(reply_text)
 
 @bot.tree.command(name="health", description="Check if Ellie is alive")
 async def health_slash(interaction: discord.Interaction):
     await interaction.response.send_message("ok", ephemeral=True)
 
-
-# -------------------
-# WEB SERVER
-# -------------------
-async def handle_root(request):
+# -------------------------------
+# WEB SERVER FOR HEALTH CHECKS
+# -------------------------------
+async def handle_root(request: web.Request) -> web.Response:
     return web.Response(text="ok")
 
-
-async def handle_health(request):
+async def handle_health(request: web.Request) -> web.Response:
     return web.Response(text="ok")
 
+# -------------------------------
+# MAIN FUNCTION
+# -------------------------------
+async def main():
+    bot_task = asyncio.create_task(bot.start(DISCORD_TOKEN))
+    await asyncio.sleep(2)
 
-async def main_web():
     app = web.Application()
     app.router.add_get("/", handle_root)
     app.router.add_get("/health", handle_health)
-
     port = int(os.getenv("PORT", "10000"))
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
-    print(f"Web server listening on port {port}")
-    while True:
-        await asyncio.sleep(3600)
 
+    print(f"Web server started on port {port}")
+    print("Ellie is fully operational!")
 
-# -------------------
-# MAIN
-# -------------------
-async def main():
-    bot_task = asyncio.create_task(bot.start(DISCORD_TOKEN))
-    web_task = asyncio.create_task(main_web())
-    await asyncio.gather(bot_task, web_task)
-
+    try:
+        await bot_task
+    except Exception as e:
+        print(f"Bot error: {e}")
+        raise
 
 if __name__ == "__main__":
     try:
