@@ -54,7 +54,7 @@ SYSTEM_PROMPT = (
 # -------------------
 # Memory structure: {channel_id: [{"user": user_id, "content": text, "timestamp": datetime}]}
 memory = {}
-MAX_MEMORY = 50  # store last 50 messages per channel
+MAX_MEMORY = 1000000  # store last 50 messages per channel
 
 
 async def ellie_reply_to_text(user_input: str, channel_id: int) -> str:
