@@ -27,23 +27,6 @@ SYSTEM_PROMPT = (
     "Only reference lore when relevant. Do not ramble or justify yourself."
 )
 
-# Very short, essential lore snippets
-LORE_SNIPPETS = {
-    "elite": "Elite Honor Guards serve UGF. 8–9'4\" augmented protectors. Guard Queens are trained spouses of High Command.",
-    "high command": "United Federation High Command: 26 members oversee all critical operations.",
-    "war rockers": "War Rockers boost soldier morale with electric guitars, inspire aggression, unity, and patriotism.",
-    "calamity": "Calamity Parawatch: 1960s paramilitary proto-UGF. Project Calamity led by Calamity Korvelle."
-}
-
-async def generate_reply(user_input: str):
-    # Keep lore small: attach only the snippet that matches keywords
-    user_lower = user_input.lower()
-    lore = ""
-    for key, snippet in LORE_SNIPPETS.items():
-        if key in user_lower:
-            lore = snippet
-            break
-
     prompt = SYSTEM_PROMPT
     if lore:
         prompt += "\n\n" + lore
