@@ -74,7 +74,7 @@ async def ellie_reply_to_text(text: str, context: str | None = None) -> str:
 async def on_ready():
     print(f"Logged in as {bot.user} (ID: {bot.user.id})")
     await bot.tree.sync()
-    print("Ellie is operational.")
+    print("Ellie is operational. bot.py 1.1")
 
 
 @bot.command(name="ellie")
